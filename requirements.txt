@@ -2,3 +2,11 @@ torch
 torchvision
 
 accelerate[sagemaker]
+git+https://github.com/huggingface/peft@master#egg=peft
+
+transformers
+loralib
+evaluate
+deepspeed
+tqdm
+datasets
