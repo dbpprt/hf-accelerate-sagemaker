@@ -24,6 +24,7 @@ py_version: py39
 pytorch_version: 1.13.1
 region: us-east-1
 transformers_version: 4.26.0
+sagemaker_metrics_file: conf/sagemaker_metrics_definition.tsv
 use_cpu: false
 # additional_args:
 #   use_spot_instances: True
