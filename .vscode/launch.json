@@ -1,16 +1,46 @@
 {
     "configurations": [
+        // {
+        //     "name": "Python: main.py",
+        //     "type": "python",
+        //     "request": "launch",
+        //     "cwd": "${workspaceFolder}",
+        //     // set your desired program
+        //     "program": "${workspaceFolder}${pathSeparator}main.py",
+        //     // set your desired arguments
+        //     "args": [],
+        //     "console": "integratedTerminal",
+        //     // you can configure environment variables
+        //     "env": {
+        //         // "PYTHONPATH": "../../"
+        //     }
+        // },
         {
-            "name": "Python: main.py",
+            "name": "accelerate main.py",
             "type": "python",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            // set your desired program
-            "program": "${workspaceFolder}${pathSeparator}main.py",
-            // set your desired arguments
-            "args": [],
+            "module": "accelerate.commands.launch",
+            "args": [
+                "--config_file=./conf/local_fp16.yaml",
+                "main.py"
+            ],
             "console": "integratedTerminal",
-            // you can configure environment variables
+            "env": {
+                // "PYTHONPATH": "../../"
+            }
+        },
+        {
+            "name": "accelerate roberta.py",
+            "type": "python",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "module": "accelerate.commands.launch",
+            "args": [
+                "--config_file=./conf/local_fp16.yaml",
+                "roberta.py"
+            ],
+            "console": "integratedTerminal",
             "env": {
                 // "PYTHONPATH": "../../"
             }

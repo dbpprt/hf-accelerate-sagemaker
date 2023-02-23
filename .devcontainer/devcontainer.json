@@ -24,6 +24,8 @@
     "--ipc=host"
   ],
   "mounts": [
+    // uncomment if you want to persist the container's hugging face cache
+    "source=${env:HOME}${env:USERPROFILE}/.cache/huggingface,target=/root/.cache/huggingface,type=bind",
     // uncomment if you want to use your local aws credentials
     "source=${env:HOME}${env:USERPROFILE}/.aws,target=/root/.aws,type=bind",
     // uncomment if you want to use the host docker socket inside the container

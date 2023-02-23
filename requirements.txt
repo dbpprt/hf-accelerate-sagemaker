@@ -2,11 +2,15 @@ torch
 torchvision
 
 accelerate[sagemaker]
-git+https://github.com/huggingface/peft@master#egg=peft
+git+https://github.com/huggingface/peft@main#egg=peft
 
+# to load the stackoverflow dataset
+pandas
+numpy
+
+# huggingface
 transformers
 loralib
 evaluate
-deepspeed
-tqdm
+# deepspeed
 datasets

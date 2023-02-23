@@ -53,7 +53,7 @@ RUN apt-get update && \
     unzip \
     && rm -rf /var/lib/apt/lists
     
-RUN echo "source activate dev" >> ~/.profile
+RUN echo "source activate dev" >> ~/.bashrc
 
 # Install docker to interact with host docker daemon
 RUN if [ ! -z "$INSTALL_DOCKER" ]; then curl -fsSL https://get.docker.com -o get-docker.sh && \
