@@ -6,111 +6,14 @@ from accelerate import Accelerator
 from accelerate.utils import find_executable_batch_size
 
 # pyright: reportPrivateImportUsage=false
-from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
-from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForSequenceClassification,
-    AutoTokenizer,
     get_linear_schedule_with_warmup,
     set_seed,
 )
 
-
-def get_dataloaders(accelerator: Accelerator, model_name: str, batch_size: int, seq_len: int):
-    """
-    Creates a set of `DataLoader`s for a sample Stackoverflow dataset (CSV)
-
-    Args:
-        accelerator (`Accelerator`):
-            An accelerator object.
-        model_name (`str`):
-            The name of the model to use.
-        batch_size (`int`):
-            The batch size to use for both training and evaluation.
-        seq_len (`int`):
-            The maximum sequence length to use for both training and evaluation.
-    """
-
-    # some boilerplate required to work with different model architectures
-    # TODO: really required?
-    if any(k in model_name for k in ("gpt", "opt", "bloom")):
-        padding_side = "left"
-    else:
-        padding_side = "right"
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side=padding_side)
-    if getattr(tokenizer, "pad_token_id") is None:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-
-    def collate_fn(examples):
-        return tokenizer.pad(examples, padding="longest", return_tensors="pt")
-
-    def preprocess_function(examples: dict):
-        """
-        Preprocesses the given dataset examples by tokenizing them and truncating them to the maximum sequence length.
-        We also gather labels specific to the Stackoverflow dataset.
-
-        Args:
-            examples (`dict`):
-                The dataset examples to preprocess.
-        """
-        batch = tokenizer(
-            examples["post"], truncation=True, max_length=seq_len, padding="max_length"
-        )
-        # format [[0, 1, 0, 0, 0, 0, 0], [0, 0, 1, 0, 0, 1, 0], ...]
-        batch["labels"] = [
-            [float(round(examples[f"label_{i}"][row_index])) for i in range(7)]
-            for row_index in range(len(examples["post"]))
-        ]
-
-        return batch
-
-    data_files = {"train": "./data/train.csv", "test": "./data/test.csv"}
-
-    # this is really specific to the Stackoverflow dataset
-    # change it for your respective dataset
-    dataset = load_dataset(
-        "csv",
-        data_files=data_files,
-        column_names=[
-            "label_0",
-            "label_1",
-            "label_2",
-            "label_3",
-            "label_4",
-            "label_5",
-            "label_6",
-            "post",
-        ],
-    )
-
-    with accelerator.main_process_first():
-        dataset = dataset.map(
-            preprocess_function,
-            batched=True,
-            num_proc=1,
-            remove_columns=dataset["train"].column_names,
-            # ideally we should use the cache, but this is a sample script, hence we don't
-            load_from_cache_file=False,
-            desc="Running tokenizer on dataset",
-        )
-
-    accelerator.wait_for_everyone()
-
-    train_dataloader = DataLoader(
-        dataset["train"],
-        shuffle=True,
-        collate_fn=collate_fn,
-        batch_size=batch_size,
-        pin_memory=True,
-    )
-
-    eval_dataloader = DataLoader(
-        dataset["test"], collate_fn=collate_fn, batch_size=batch_size, pin_memory=True
-    )
-
-    return train_dataloader, eval_dataloader
+from data import get_dataloaders
 
 
 def main(args):
@@ -188,6 +91,7 @@ def main(args):
         train_dataloader, eval_dataloader = get_dataloaders(
             accelerator=accelerator,
             model_name=args.model_name,
+            data_dir=args.data_dir,
             batch_size=batch_size,
             seq_len=args.seq_len,
         )
@@ -289,36 +193,36 @@ def main(args):
     #             output_dir = os.path.join(args.output_dir, output_dir)
     #         accelerator.save_state(output_dir)
 
-    accelerator.end_training()
+    # accelerator.end_training()
     accelerator.wait_for_everyone()
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Multilabel text classification")
-
-    parser.add_argument("--model-name", default="roberta-large", type=str)
-
+    # we have to use underscore in the argument names because hyphen is translated with underscore
+    # by accelerate and sagemaker
+    parser.add_argument("--model_name", default="roberta-large", type=str)
     parser.add_argument(
-        "--batch-size",
+        "--batch_size",
         default=8,
         type=int,
         help="the training will find the max batch size that fits into memory and use gradient accumulation",
     )
     parser.add_argument(
-        "--num-epochs", default=5, type=int, metavar="N", help="number of total epochs to run"
+        "--num_epochs", default=5, type=int, metavar="N", help="number of total epochs to run"
     )
-    parser.add_argument("--seq-len", default=512, type=int, help="sequence length")
-    parser.add_argument("--learning-rate", default=0.0003, type=float, help="initial learning rate")
+    parser.add_argument("--seq_len", default=512, type=int, help="sequence length")
+    parser.add_argument("--learning_rate", default=0.0003, type=float, help="initial learning rate")
     parser.add_argument("--seed", default=42, type=int, help="seed for initializing training. ")
 
     # LoRa
-    parser.add_argument("--lora-r", default=8, type=int, help="LoRa r")
-    parser.add_argument("--lora-alpha", default=16, type=int, help="LoRa alpha")
-    parser.add_argument("--lora-dropout", default=0.1, type=float, help="LoRa dropout")
+    parser.add_argument("--lora_r", default=8, type=int, help="LoRa r")
+    parser.add_argument("--lora_alpha", default=16, type=int, help="LoRa alpha")
+    parser.add_argument("--lora_dropout", default=0.1, type=float, help="LoRa dropout")
 
-    parser.add_argument("--print-freq", default=10, type=int, help="print frequency")
-    parser.add_argument("--dataset-dir", default="./dataset", help="dataset path")
-    parser.add_argument("--output-dir", default=".", help="path where to save")
+    parser.add_argument("--print_freq", default=10, type=int, help="print frequency")
+    parser.add_argument("--data_dir", default="./.data", help="preprocessed dataset path")
+    parser.add_argument("--output_dir", default=".", help="path where to save")
     parser.add_argument("--resume", default="", help="resume from checkpoint")
 
     return parser.parse_args()

@@ -1,17 +1,16 @@
 import argparse
 
-import evaluate
-import torch
 from accelerate import Accelerator
+
 # pyright: reportPrivateImportUsage=false
-from datasets import load_dataset
-from peft import LoraConfig, get_peft_model
+from datasets import load_dataset, load_from_disk
 from torch.utils.data import DataLoader
-from transformers import (AutoModelForSequenceClassification, AutoTokenizer,
-                          get_linear_schedule_with_warmup, set_seed)
+from transformers import AutoTokenizer
 
 
-def get_dataloaders(accelerator: Accelerator, model_name: str, batch_size: int, seq_len: int):
+def get_dataloaders(
+    accelerator: Accelerator, model_name: str, data_dir: str, batch_size: int, seq_len: int
+):
     """
     Creates a set of `DataLoader`s for a sample Stackoverflow dataset (CSV)
 
@@ -60,24 +59,7 @@ def get_dataloaders(accelerator: Accelerator, model_name: str, batch_size: int, 
 
         return batch
 
-    data_files = {"train": "./data/train.csv", "test": "./data/test.csv"}
-
-    # this is really specific to the Stackoverflow dataset
-    # change it for your respective dataset
-    dataset = load_dataset(
-        "csv",
-        data_files=data_files,
-        column_names=[
-            "label_0",
-            "label_1",
-            "label_2",
-            "label_3",
-            "label_4",
-            "label_5",
-            "label_6",
-            "post",
-        ],
-    )
+    dataset = load_from_disk(data_dir)
 
     with accelerator.main_process_first():
         dataset = dataset.map(
@@ -105,3 +87,43 @@ def get_dataloaders(accelerator: Accelerator, model_name: str, batch_size: int, 
     )
 
     return train_dataloader, eval_dataloader
+
+
+def main(args):
+    data_files = {"train": args.train_file, "test": args.test_file}
+
+    # this is really specific to the Stackoverflow dataset
+    # change it for your respective dataset
+    dataset = load_dataset(
+        "csv",
+        data_files=data_files,
+        column_names=[
+            "label_0",
+            "label_1",
+            "label_2",
+            "label_3",
+            "label_4",
+            "label_5",
+            "label_6",
+            "post",
+        ],
+    )
+
+    dataset.save_to_disk(args.output_dir, storage_options={"anon": True})
+    # see known issue: https://github.com/huggingface/datasets/issues/5281
+    # builder.download_and_prepare(
+    #     args.output_dir, storage_options={"anon": True}, file_format=args.file_format
+    # )
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Data preprocessing script")
+    parser.add_argument("--train_file", type=str, default="./data/train.csv")
+    parser.add_argument("--test_file", type=str, default="./data/test.csv")
+    parser.add_argument("--output_dir", type=str, default="./.data")
+    parser.add_argument("--file_format", type=str, default="parquet")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    main(parse_args())
