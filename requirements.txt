@@ -12,5 +12,6 @@ numpy
 transformers
 loralib
 evaluate
+scikit-learn # to calculate f1 score
 # deepspeed
 datasets
